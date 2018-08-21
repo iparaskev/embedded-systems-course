@@ -6,16 +6,19 @@ CC = gcc
 RM = rm -f
 CFLAGS = -pthread
 RUN = server_loc client 
+DEPS = constants.h data_structures.h
 
 #DIRECTORIES
 SRC = src
 BIN = bin
+HEADERS = headers
+OBJD = obj
 
 #COMMANDS
 all: $(RUN)
 
-server_loc: $(SRC)/server.c
-	$(CC) $^ -o $(BIN)/$@ $(CFLAGS)
+server_loc: $(SRC)/server.c $(SRC)/data_structures.c
+	$(CC) $^ -o $(BIN)/$@ $(CFLAGS) -I $(HEADERS)
 
 #server: $(SRC)/server.c
 #	$(CrosCC) $^ -o $(BIN)/$@ 
@@ -24,7 +27,10 @@ server_loc: $(SRC)/server.c
 #	$(CrosCC) $^ -o $(BIN)/$@ $(CFLAGS)
 
 client: $(SRC)/client.c
-	gcc $^ -o $(BIN)/$@
+	gcc $^ -o $(BIN)/$@ -I $(HEADERS)
 
 clean:
 	$(RM) $(BIN)/*
+
+
+
