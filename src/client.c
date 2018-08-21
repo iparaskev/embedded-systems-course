@@ -6,8 +6,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include "constants.h"
 
-#define MAXDATASIZE 256
 
 /*
 	socket
@@ -50,13 +50,40 @@ main(int argc, char **argv)
 		exit(-1);
 	}
 
-	// send the message
-	char buffer[MAXDATASIZE];
-	fgets(buffer, MAXDATASIZE, stdin);
 	int numbytes;
-	if((numbytes = send(socket_fd, buffer, strlen(buffer), 0)) == -1)
+	/* Send address to server.*/ 
+	char from[ADDRESS_SIZE];
+	fgets(from, ADDRESS_SIZE, stdin);
+	if((numbytes = send(socket_fd, from, strlen(from), 0)) == -1)
 		perror("send");
 
+	/* Get incoming messages.*/
+	char message[MAXDATA_SIZE];
+	while (1)
+	{
+		numbytes = recv(socket_fd, message, MAXDATA_SIZE - 1, 0);
+		if (numbytes == -1)
+			perror("receive");
+		message[numbytes] = '\0';
+		if (strcmp(message, "\r\n") == 0)
+			break;
+		printf("Message: %s", message);
+	}
+
+	/* Send Address of receiver.*/
+	char to[ADDRESS_SIZE];
+	fgets(to, ADDRESS_SIZE, stdin);
+	if((numbytes = send(socket_fd, to, strlen(to), 0)) == -1)
+		perror("send");
+
+	/* Send message*/
+	if (strcmp(to, "\r\n") != 0)
+	{
+		fgets(message, MAXDATA_SIZE, stdin);
+		numbytes = send(socket_fd, message, strlen(message), 0);
+		if(numbytes == -1)
+			perror("send");
+	}
 	close(socket_fd);
 	return 0;
 }
