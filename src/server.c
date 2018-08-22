@@ -27,6 +27,7 @@ struct accept_d
 void *
 handle_accept(void *fd)
 {
+
 	/* Convert socket descriptor*/
 	struct accept_d *accept_fd;
 	accept_fd = (struct accept_d *) fd;
@@ -34,10 +35,10 @@ handle_accept(void *fd)
 
 	/* The buffers will be needed.*/
 	int numbytes;
-	char message[MAXDATA_SIZE];
-	char from[ADDRESS_SIZE];
-	char to[ADDRESS_SIZE];
-	char buffer[ADDRESS_SIZE + MAXDATA_SIZE];
+	char *message = malloc(MAXDATA_SIZE);
+	char *from = malloc(ADDRESS_SIZE);
+	char *to = malloc(ADDRESS_SIZE);
+	char *buffer = malloc(ADDRESS_SIZE + MAXDATA_SIZE);
 
 	/* Read connected address.*/
 	if ((numbytes = recv(new_fd, from, ADDRESS_SIZE - 1, 0)) == -1)
@@ -96,7 +97,7 @@ handle_accept(void *fd)
 	}
 	message[numbytes - new_line - 1] = '\n';
 	message[numbytes - new_line] = '\0';
-	//printf("to: %smessage: %s\n", to, message);
+	printf("to: %smessage: %s\n", to, message);
 
 	/* Append the message to the list with the other messages*/
 	pthread_mutex_lock(&user_pass);
@@ -116,6 +117,9 @@ handle_accept(void *fd)
 
 	close(new_fd);
 	free(accept_fd);
+
+	/* Detach the thread, so we dont have zombies*/
+	pthread_detach(pthread_self());
 	pthread_exit(NULL);
 }
 
@@ -184,6 +188,9 @@ main(int argc, char **argv)
 	users_list->head = NULL;
 	users_list->next = NULL;
 
+	pthread_attr_t attr;
+	pthread_attr_init(&attr);
+	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 	// new process for every connection
 	while(1)
 	{
