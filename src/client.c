@@ -70,20 +70,22 @@ main(int argc, char **argv)
 		printf("Message: %s", message);
 	}
 
-	/* Send Address of receiver.*/
+	/* Send address of receiver and message.*/
 	char to[ADDRESS_SIZE];
 	fgets(to, ADDRESS_SIZE, stdin);
-	if((numbytes = send(socket_fd, to, strlen(to), 0)) == -1)
-		perror("send");
 
 	/* Send message*/
 	if (strcmp(to, "\r\n") != 0)
 	{
 		fgets(message, MAXDATA_SIZE, stdin);
-		numbytes = send(socket_fd, message, strlen(message), 0);
+
+		/* Concatenate to and message*/
+		strcat(to, message);
+		numbytes = send(socket_fd, to, strlen(to), 0);
 		if(numbytes == -1)
 			perror("send");
 	}
+
 	close(socket_fd);
 	return 0;
 }

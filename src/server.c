@@ -9,6 +9,8 @@
 #include "constants.h"
 #include "data_structures.h"
 
+// TODO Reap zombie threads
+
 /* Global variables*/
 users *users_list;
 
@@ -30,10 +32,14 @@ handle_accept(void *fd)
 	accept_fd = (struct accept_d *) fd;
 	int new_fd = accept_fd->new_fd;
 
-	/* Read connected address.*/
+	/* The buffers will be needed.*/
 	int numbytes;
 	char message[MAXDATA_SIZE];
 	char from[ADDRESS_SIZE];
+	char to[ADDRESS_SIZE];
+	char buffer[ADDRESS_SIZE + MAXDATA_SIZE];
+
+	/* Read connected address.*/
 	if ((numbytes = recv(new_fd, from, ADDRESS_SIZE - 1, 0)) == -1)
 	{
 		perror("recv");
@@ -57,40 +63,55 @@ handle_accept(void *fd)
 		}
 		pthread_mutex_unlock(&(target->user_mutex));
 	}
+
+	/*Send termination message for the uread*/
 	strcpy(message, "\r\n");
 	numbytes = send(new_fd, message, MAXDATA_SIZE - 1, 0);
 	if (numbytes == -1)
 		perror("send");
+	memset(message, 0, MAXDATA_SIZE);
 
-	/* Receive receiver addres.*/
-	char to[ADDRESS_SIZE];
-	if ((numbytes = recv(new_fd, to, ADDRESS_SIZE - 1, 0)) == -1)
+	/* Receive message*/
+	if ((numbytes = recv(new_fd, buffer, MAXDATA_SIZE + ADDRESS_SIZE -1, 0)) == -1)
 	{
-		perror("recv: Message");
+		perror("recv");
 		exit(1);
 	}
-	to[numbytes] = '\0';
-	//printf("to: %s", to);
+	buffer[numbytes] = '\0';
 
-	/*Check if is to is empty sting, and if it is terminate the connection.*/
-	if (strcmp(to, "\r\n") != 0)
+	/* Extract receiver address*/
+	int new_line = 0;
+	for (int i = 0; i < numbytes - 1; i++)
 	{
-		if ((numbytes = recv(new_fd, message, MAXDATA_SIZE -1, 0)) == -1)
-		{
-			perror("recv");
-			exit(1);
-		}
-		message[numbytes] = '\0';
-		//printf("message: %s", message);
-
-		/* Append the message to the list with the other messages*/
-		pthread_mutex_lock(&user_pass);
-		target = find_user(users_list, to);
-		if (target == NULL)
-			add_user(users_list, to, message);
+		if ((buffer[i] != '\n') && !new_line)
+			to[i] = buffer[i];	
+		else if (buffer[i] != '\n' && new_line)
+			message[i - new_line] = buffer[i];
 		else
-			add_message(target, message);
+		{
+			new_line = i + 1;
+			to[i] = '\n';
+			to[i + 1] = '\0';
+		}
+	}
+	message[numbytes - new_line - 1] = '\n';
+	message[numbytes - new_line] = '\0';
+	//printf("to: %smessage: %s\n", to, message);
+
+	/* Append the message to the list with the other messages*/
+	pthread_mutex_lock(&user_pass);
+	target = find_user(users_list, to);
+	if (target == NULL)
+	{
+		add_user(users_list, to, message);
 		pthread_mutex_unlock(&user_pass);
+	}
+	else
+	{
+		pthread_mutex_unlock(&user_pass);
+		pthread_mutex_lock(&(target->user_mutex));
+		add_message(target, message);
+		pthread_mutex_unlock(&(target->user_mutex));
 	}
 
 	close(new_fd);
