@@ -9,6 +9,13 @@ max_sleep=10;
 # Total sended messages to every user
 total_0=0;
 total_1=0;
+
+# Remove the previous log file
+rm -f logs/$ID.log
+rm -f logs/time.log
+
+# Measure time
+time_start=$(date +%s.%N);
 for i in `seq 1 10`;
 do
         n_messages=$(echo $(( (RANDOM % $limit) + 3 )));
@@ -35,8 +42,7 @@ do
                 sleep $sleep_time
         done
 
-        echo "Iteration: $i Sended $counter_0 messages to user 0"\
-             "and $counter_1 messages to user 1."
+        echo "${i}_${counter_0}_${counter_1}" >> logs/$ID.log
         
         # Update total messages
         total_0=$(echo $(( total_0 + counter_0 )));
@@ -45,7 +51,10 @@ do
         sleep_time=$(echo $(( (RANDOM % $max_sleep) + 1 )));
         sleep $sleep_time;
 done
+time_end=$(date +%s.%N);
 
-echo "Total messages from $ID to 0 $total_0, to 1 $total_1"
+# Write the time
+echo " $time_end - $time_start" | bc >> logs/time.log
+
 
 

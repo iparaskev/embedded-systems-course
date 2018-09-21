@@ -23,6 +23,7 @@ pthread_mutex_t active_pass = PTHREAD_MUTEX_INITIALIZER;
 
 // struct for the accepting descriptors
 // TODO: try long int pointer and not a struct
+// TODO: blank user has blank message
 
 void *
 handle_accept(void *fd)
