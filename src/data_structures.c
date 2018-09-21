@@ -82,45 +82,48 @@ delete_message(users *user)
 	}
 }
 
+void 
+add_descriptor(fifo *l, struct accept_d *sd)
+{
+	fifo *cur = l;
+	for (; cur->next != NULL; cur = cur->next);
+
+	fifo *new = malloc(sizeof *new);
+	if (new == NULL)
+	{
+		perror("Malloc");
+		exit(1);
+	}
+	new->sd = sd;
+	new->next = NULL;
+	cur->next = new;
+}
+
+void
+delete_descriptor(fifo *l)
+{
+	fifo *del = l->next;
+	l->sd = l->next->sd;
+	l->next = l->next->next;
+	free(del);	
+}
+
 //int 
 //main(int argc, char **argv)
 //{
-//	users *users_start;
-//	//users *cur;
-//	int first = 1;
+//	fifo *test = NULL;
+//	int N = 10;
+//	test = malloc(sizeof *test);
+//	test->sd = (void *) (long) 0;
+//	for (long i = 1; i < N; i++)
+//		add_descriptor(test, (void *) i);	
 //
-//	char *users_names[] = { "a", "b", "c", "b", "d" };
-//	char *messag[] = { "hey a", "hey b", "hey c", "hey b", "hey d"};
-//
-//	/* First user*/
-//	users_start = malloc(sizeof *users_start);
-//	users_start->name = users_names[0];
-//	users_start->next = NULL;
-//	users_start->head = malloc(sizeof (messages));
-//	users_start->head->msg = messag[0];
-//	users_start->tail = users_start->head;
-//	//cur = users_start;
-//
-//	int N = 5;
-//	for (int i = 1; i < N; i++)
+//	for (int i = 0; i < N-1; i++)
+//		delete_descriptor(test);
+//	for(; test != NULL; test = test->next)
 //	{
-//		users *target = find_user(users_start, users_names[i]);
-//		if (find_user(users_start, users_names[i]) == NULL)
-//			add_user(users_start, users_names[i], messag[i]);
-//		else
-//			add_message(target, messag[i]);
+//		printf("%ld\n", (long) test->sd);
 //	}
 //
-//	users *target = find_user(users_start, "c");
-//	delete_message(target);
-//	add_message(target, messag[0]);
-//
-//	for (; users_start != NULL; users_start = users_start->next)
-//	{
-//		printf("Username: %s\n", users_start->name);
-//		messages *mess = users_start->head;
-//		for (; mess != NULL; mess = mess->next)
-//			printf("Message: %s\n", mess->msg);
-//	}
 //	return 0;
 //}

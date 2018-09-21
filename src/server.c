@@ -9,20 +9,20 @@
 #include "constants.h"
 #include "data_structures.h"
 
-// TODO Reap zombie threads
+#define LIMIT 4
 
 /* Global variables*/
 users *users_list;
+fifo *waiting_clients;
+int active_clients = 0;
+int wait_counter = 0;
 
 /* Mutex for searching the users*/
 pthread_mutex_t user_pass = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t active_pass = PTHREAD_MUTEX_INITIALIZER;
 
 // struct for the accepting descriptors
 // TODO: try long int pointer and not a struct
-struct accept_d
-{
-	int new_fd;
-};
 
 void *
 handle_accept(void *fd)
@@ -73,7 +73,8 @@ handle_accept(void *fd)
 	memset(message, 0, MAXDATA_SIZE);
 
 	/* Receive message*/
-	if ((numbytes = recv(new_fd, buffer, MAXDATA_SIZE + ADDRESS_SIZE -1, 0)) == -1)
+	numbytes = recv(new_fd, buffer, MAXDATA_SIZE + ADDRESS_SIZE -1, 0);
+	if ( numbytes == -1)
 	{
 		perror("recv");
 		exit(1);
@@ -82,7 +83,8 @@ handle_accept(void *fd)
 
 	/* Extract receiver address*/
 	int new_line = 0;
-	for (int i = 0; i < numbytes - 1; i++)
+	int i;
+	for (i = 0; i < numbytes - 1; i++)
 	{
 		if ((buffer[i] != '\n') && !new_line)
 			to[i] = buffer[i];	
@@ -97,7 +99,7 @@ handle_accept(void *fd)
 	}
 	message[numbytes - new_line - 1] = '\n';
 	message[numbytes - new_line] = '\0';
-	printf("to: %smessage: %s\n", to, message);
+	//printf("to: %smessage: %s\n", to, message);
 
 	/* Append the message to the list with the other messages*/
 	pthread_mutex_lock(&user_pass);
@@ -118,8 +120,44 @@ handle_accept(void *fd)
 	close(new_fd);
 	free(accept_fd);
 
+	/* Update active connections counter.*/
+	pthread_mutex_lock(&active_pass);
+	if (wait_counter > 0)
+	{
+		//puts("1");
+
+		fifo *c = waiting_clients;
+		//for (; c!=NULL; c = c->next)
+		//	printf("descritor %d\n", waiting_clients->sd->new_fd);
+		struct accept_d *input = malloc(sizeof *input);
+		input = waiting_clients->sd;
+		//puts("2");
+
+		/*Create new thread from list*/
+		pthread_t thread;
+		pthread_create(&thread, NULL, handle_accept, (void *) input);
+		//puts("3");
+
+		/* Delete the given descriptor*/
+		if (waiting_clients->next != NULL)
+			delete_descriptor(waiting_clients);
+		else
+		{
+			free(waiting_clients);
+			waiting_clients = NULL;
+		}
+		//puts("4");
+		wait_counter--;
+
+	}
+	else
+		active_clients--;
+	//printf("Thread:\nactive cliens %d\nwaiting clients: %d\n", active_clients, wait_counter);
+	pthread_mutex_unlock(&active_pass);
+
 	/* Detach the thread, so we dont have zombies*/
 	pthread_detach(pthread_self());
+
 	pthread_exit(NULL);
 }
 
@@ -188,9 +226,9 @@ main(int argc, char **argv)
 	users_list->head = NULL;
 	users_list->next = NULL;
 
-	pthread_attr_t attr;
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+	/*Initialize the fifo for the waiting clients*/
+	waiting_clients = NULL;
+
 	// new process for every connection
 	while(1)
 	{
@@ -204,9 +242,39 @@ main(int argc, char **argv)
 
 		fd = malloc(sizeof (struct accept_d));
 		fd->new_fd = new_fd;
-		pthread_t thread;
-		pthread_create(&thread, NULL, handle_accept, (void *) fd);
-		
+
+		pthread_mutex_lock(&active_pass);
+		if (active_clients < LIMIT)
+		{
+			active_clients++;
+
+			/* Create new thread*/
+			pthread_t thread;
+			pthread_create(&thread, NULL, handle_accept, (void *) fd);
+		}
+		else
+		{
+			/* Append an element to the waiting list.*/
+			if (waiting_clients != NULL)
+			{
+				add_descriptor(waiting_clients, fd);
+			}
+			else
+			{
+				waiting_clients = malloc(sizeof *waiting_clients);
+				if (waiting_clients == NULL)
+				{
+					perror("malloc");
+					exit(1);
+				}
+				waiting_clients->next = NULL;
+				waiting_clients->sd = fd;
+			}
+			wait_counter++;
+
+		}
+		//printf("Main:\nactive cliens %d\nwaiting clients: %d\n", active_clients, wait_counter);
+		pthread_mutex_unlock(&active_pass);
 	}
 	
 	return 0;
