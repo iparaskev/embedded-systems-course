@@ -6,6 +6,8 @@ log_files = os.listdir(logs_path)
 total_messages = {}         # Dictionary with total messages per iteration
 received_messages = [{}, {}]      # List with the received messages per user
 
+maxim = 0
+
 for log in log_files:
     # Get log id
     log_id = log.split(".")[0]
@@ -15,7 +17,13 @@ for log in log_files:
         lines = f.readlines()
 
     # Different action if it is one of the target files
-    if log_id == "0" or log_id == "1":
+    if log_id == "time":
+        lines = [float(l.strip("\n")) for l in lines]
+        # Find maximum time 
+        for line in lines:
+            if line > maxim:
+                maxim = line
+    elif log_id == "0" or log_id == "1":
         int_id = int(log_id)
         
         # Read the results file
@@ -80,4 +88,5 @@ print ("Sended: %d\nReceived: %d\nLost: %d\nCheck: %d\n"%(total_sended,
                                                           total_received,
                                                           total_lost,
                                                           total_sended - total_received))
+print ("Time: %f\n%f messages/second\n"%(maxim, total_received/maxim))
 

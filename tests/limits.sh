@@ -38,7 +38,7 @@ do
                         counter_1=$(echo $(( counter_1 + 1 )));
                 fi
 
-                sleep_time=$(echo $(( (RANDOM % 3) )));
+                sleep_time=$(echo $(( (RANDOM % 2) )));
                 sleep $sleep_time
         done
 
