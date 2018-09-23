@@ -9,7 +9,7 @@
 #include "constants.h"
 #include "data_structures.h"
 
-#define LIMIT 4
+#define LIMIT 8
 
 /* Global variables*/
 users *users_list;
@@ -123,6 +123,7 @@ handle_accept(void *fd)
 
 	/* Update active connections counter.*/
 	pthread_mutex_lock(&active_pass);
+	//printf("%d\n", wait_counter);
 	if (wait_counter > 0)
 	{
 		//puts("1");
