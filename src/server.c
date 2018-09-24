@@ -9,7 +9,7 @@
 #include "constants.h"
 #include "data_structures.h"
 
-#define LIMIT 8
+#define LIMIT 2
 
 /* Global variables*/
 users *users_list;
@@ -40,6 +40,8 @@ handle_accept(void *fd)
 	char *from = malloc(ADDRESS_SIZE);
 	char *to = malloc(ADDRESS_SIZE);
 	char *buffer = malloc(ADDRESS_SIZE + MAXDATA_SIZE);
+	char *unread = malloc(10 * MAXDATA_SIZE);
+	memset(unread, 0, 10 * MAXDATA_SIZE);
 
 	/* Read connected address.*/
 	if ((numbytes = recv(new_fd, from, ADDRESS_SIZE - 1, 0)) == -1)
@@ -55,22 +57,39 @@ handle_accept(void *fd)
 	if (target != NULL)
 	{
 		pthread_mutex_lock(&(target->user_mutex));
+		int counter = 0;
 		while (target->head != NULL)
 		{
 			strcpy(message, target->head->msg);
-			numbytes = send(new_fd, message, MAXDATA_SIZE - 1, 0);
-			if (numbytes == -1)
-				perror("send");
+			strcat(unread, message);
 			delete_message(target);
+			if (!(counter % 10) && counter)
+			{
+				numbytes = send(new_fd, unread, 
+						10*MAXDATA_SIZE - 1, 0);
+				if (numbytes == -1)
+					perror("send");
+				
+				memset(unread, 0, 10 * MAXDATA_SIZE);
+			}
+			counter++;
 		}
+		/* Send the last batch of messages*/
+		//printf("User %s, messages %d\n", from, counter);
 		pthread_mutex_unlock(&(target->user_mutex));
 	}
 
 	/*Send termination message for the uread*/
-	strcpy(message, "\r\n");
-	numbytes = send(new_fd, message, MAXDATA_SIZE - 1, 0);
+	strcat(unread, "end_messages_0@#1\n");
+	printf("%s", unread);
+	numbytes = send(new_fd, unread, 10*MAXDATA_SIZE - 1, 0);
 	if (numbytes == -1)
 		perror("send");
+	free(unread);
+	//strcpy(message, "\r\n");
+	//numbytes = send(new_fd, message, MAXDATA_SIZE - 1, 0);
+	//if (numbytes == -1)
+	//	perror("send");
 	memset(message, 0, MAXDATA_SIZE);
 
 	/* Receive message*/
@@ -123,7 +142,6 @@ handle_accept(void *fd)
 
 	/* Update active connections counter.*/
 	pthread_mutex_lock(&active_pass);
-	//printf("%d\n", wait_counter);
 	if (wait_counter > 0)
 	{
 		//puts("1");
@@ -246,6 +264,7 @@ main(int argc, char **argv)
 		fd->new_fd = new_fd;
 
 		pthread_mutex_lock(&active_pass);
+		//printf("%d\n", wait_counter);
 		if (active_clients < LIMIT)
 		{
 			active_clients++;

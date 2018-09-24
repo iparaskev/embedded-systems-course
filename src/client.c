@@ -58,16 +58,41 @@ main(int argc, char **argv)
 		perror("send");
 
 	/* Get incoming messages.*/
+	char unread[10 * MAXDATA_SIZE];
 	char message[MAXDATA_SIZE];
+	memset(message, 0, MAXDATA_SIZE);
+	char *termio = {"end_messages_0@#1"};
+	int flag = 0;
 	while (1)
 	{
-		numbytes = recv(socket_fd, message, MAXDATA_SIZE - 1, 0);
+		numbytes = recv(socket_fd, unread, 10*MAXDATA_SIZE - 1, 0);
 		if (numbytes == -1)
 			perror("receive");
-		message[numbytes] = '\0';
-		if (strcmp(message, "\r\n") == 0)
+		unread[numbytes] = '\0';
+		//printf("%s\n", unread);
+
+		/* Split the messages. */
+		int index = 0;
+		for (int byte = 0; byte < numbytes; byte++)
+		{
+			if (unread[byte] != 10)
+			{
+				message[index] = unread[byte];
+				index++;
+			}
+			else
+			{
+				if (strcmp(message, "end_messages_0@#1") == 0)
+				{
+					flag = 1;
+					break;
+				}
+				printf("Message: %s\n", message);
+				index = 0;
+			}
+		}
+		if (flag)
 			break;
-		printf("Message: %s", message);
 	}
 
 	/* Send address of receiver and message.*/
