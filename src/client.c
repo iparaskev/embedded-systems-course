@@ -58,14 +58,14 @@ main(int argc, char **argv)
 		perror("send");
 
 	/* Get incoming messages.*/
-	char unread[10 * MAXDATA_SIZE];
+	char unread[BATCH_SIZE];
 	char message[MAXDATA_SIZE];
 	memset(message, 0, MAXDATA_SIZE);
 	char *termio = {"end_messages_0@#1"};
 	int flag = 0;
 	while (1)
 	{
-		numbytes = recv(socket_fd, unread, 10*MAXDATA_SIZE - 1, 0);
+		numbytes = recv(socket_fd, unread, BATCH_SIZE - 1, 0);
 		if (numbytes == -1)
 			perror("receive");
 		unread[numbytes] = '\0';
@@ -88,6 +88,7 @@ main(int argc, char **argv)
 					break;
 				}
 				printf("Message: %s\n", message);
+				memset(message, 0, MAXDATA_SIZE);
 				index = 0;
 			}
 		}
@@ -95,20 +96,34 @@ main(int argc, char **argv)
 			break;
 	}
 
-	/* Send address of receiver and message.*/
-	char to[ADDRESS_SIZE];
-	fgets(to, ADDRESS_SIZE, stdin);
-
-	/* Send message*/
-	if (strcmp(to, "\r\n") != 0)
+	
+	while (1)
 	{
-		fgets(message, MAXDATA_SIZE, stdin);
+		/* Send address of receiver and message.*/
+		char to[ADDRESS_SIZE + MAXDATA_SIZE];
+		memset(to, 0, ADDRESS_SIZE + MAXDATA_SIZE);
+		fgets(to, ADDRESS_SIZE, stdin);
 
-		/* Concatenate to and message*/
-		strcat(to, message);
-		numbytes = send(socket_fd, to, strlen(to), 0);
-		if(numbytes == -1)
-			perror("send");
+		/* Send message*/
+		if (strcmp(to, "\n") != 0)
+		{
+			fgets(message, MAXDATA_SIZE, stdin);
+
+			/* Concatenate to and message*/
+			strcat(to, message);
+			numbytes = send(socket_fd, to, strlen(to), 0);
+			if(numbytes == -1)
+				perror("send");
+			memset(to, 0, ADDRESS_SIZE + MAXDATA_SIZE);
+		}
+		else
+		{
+			numbytes = send(socket_fd, to, strlen(to), 0);
+			if(numbytes == -1)
+				perror("send");
+			break;
+		}
+		break;
 	}
 
 	close(socket_fd);
