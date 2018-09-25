@@ -4,5 +4,6 @@
 #define MAXDATA_SIZE 250
 #define ADDRESS_SIZE 20
 #define BACKLOG 10
+#define BATCH_SIZE 250
 
 #endif
