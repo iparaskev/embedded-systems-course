@@ -3,10 +3,10 @@
 IP=$1
 PORT=$2;
 ID=$3;
-limit=$4;
-max_sleep=$5;
-sleep_break=3;
-rounds=20;
+rounds=$4;
+limit=$5;
+sleep_break=$6;
+max_sleep=$7;
 
 # Total sended messages to every user
 total_0=0;
@@ -20,7 +20,7 @@ rm -f logs/time.log
 time_start=$(date +%s.%N);
 for i in `seq 1 $rounds`;
 do
-        n_messages=$(echo $(( (RANDOM % $limit) + 3 )));
+        n_messages=$(echo $(( (RANDOM % $limit) + 2 )));
 
         # Counter for checking how many messages send to every user
         counter_0=0;

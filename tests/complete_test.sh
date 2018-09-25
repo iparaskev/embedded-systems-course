@@ -1,26 +1,36 @@
 #!/bin/bash
 
 IP=$1;
+if [ $IP = '-h' ]
+then
+        echo "Arguments"
+        echo "IP PORT clients iterations msgs_per_it sleep_per_msg sleep_per_it"
+        exit 0
+fi
+
+# Read all the arguments.
 PORT=$2;
-limit=$3;
-clients=$(echo $(( $4 + 1 )));
-time_interval=$5;
+clients=$(echo $(( $3 + 1 )));
+its=$4;
+msgs_per_it=$5;
+time_per_msg=$6;
+time_interval=$7;
 
 # Clear the logs
 rm -f logs/*;
+
+# Write the cpu logs to file
+ssh root@$IP 'top' > logs/top_results.log &
+fg %ssh
+sleep 5;
 
 # Start the concurrent client processes
 wait_pids=();
 for i in `seq 2 $clients`;
 do
-        ./tests/limits.sh $IP $PORT $i $limit $time_interval &
-	wait_pids+=($!);
+        ./tests/limits.sh $IP $PORT $i $its $msgs_per_it $time_per_msg $time_interval &
+	    wait_pids+=($!);
 done
-
-# Write the cpu logs to file
-ssh root@192.168.1.1 'top' > logs/top_results.log &
-fg %ssh
-
 
 wait ${wait_pids[*]};
 
