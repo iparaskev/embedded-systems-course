@@ -4,9 +4,9 @@ IP=$1
 PORT=$2;
 ID=$3;
 limit=$4;
-max_sleep=20;
+max_sleep=$5;
 sleep_break=3;
-rounds=10;
+rounds=20;
 
 # Total sended messages to every user
 total_0=0;

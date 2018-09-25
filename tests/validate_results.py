@@ -2,6 +2,7 @@ import os
 
 logs_path = 'logs/'
 log_files = os.listdir(logs_path)
+useless = ['cpu', 'waiting_counter', 'top_results']
 
 total_messages = {}         # Dictionary with total messages per iteration
 received_messages = [{}, {}]      # List with the received messages per user
@@ -22,7 +23,9 @@ for log in log_files:
         lines = f.readlines()
 
     # Different action if it is one of the target files
-    if log_id == "time":
+    if log_id in useless:
+        pass
+    elif log_id == "time":
         lines = [float(l.strip("\n")) for l in lines]
         # Find maximum time 
         for line in lines:
@@ -75,7 +78,6 @@ for log in log_files:
 
 identity = 0
 total_lost = 0
-print (rec_0, rec_1)
 # Validate that got the right messages
 for receiver in received_messages:
     for sender in receiver:
@@ -108,5 +110,5 @@ print ("Sended: %d\nReceived: %d\nLost: %d\nCheck: %d\n"%(total_sended,
                                                           total_received,
                                                           total_lost,
                                                           total_sended - total_received))
-print ("Time: %f\n%f messages/second\n"%(maxim, total_received/maxim))
+print ("Time: %f\nRatio: %f messages/second\n"%(maxim, total_received/maxim))
 
