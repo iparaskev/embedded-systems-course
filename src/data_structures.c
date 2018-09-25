@@ -126,4 +126,3 @@ delete_descriptor(fifo *l)
 	l->next = l->next->next;
 	free(del);	
 }
-
