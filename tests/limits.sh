@@ -4,7 +4,9 @@ IP=$1
 PORT=$2;
 ID=$3;
 limit=$4;
-max_sleep=10;
+max_sleep=20;
+sleep_break=3;
+rounds=10;
 
 # Total sended messages to every user
 total_0=0;
@@ -16,7 +18,7 @@ rm -f logs/time.log
 
 # Measure time
 time_start=$(date +%s.%N);
-for i in `seq 1 10`;
+for i in `seq 1 $rounds`;
 do
         n_messages=$(echo $(( (RANDOM % $limit) + 3 )));
 
@@ -38,7 +40,7 @@ do
                         counter_1=$(echo $(( counter_1 + 1 )));
                 fi
 
-                sleep_time=$(echo $(( (RANDOM % 2) )));
+                sleep_time=$(echo $(( (RANDOM % $sleep_break) )));
                 sleep $sleep_time
         done
 

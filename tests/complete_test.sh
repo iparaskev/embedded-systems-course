@@ -3,11 +3,13 @@
 IP=$1;
 PORT=$2;
 limit=$3;
-clients=$4;
+clients=$(echo $(( $4 + 1 )));
 
+# Clear the logs
+rm -f logs/*;
 
 # Get the server pid
-pid=$(ps | grep server | awk '{print $1}');
+#pid=$(ps | grep server | awk '{print $1}');
 
 # Start the concurrent client processes
 wait_pids=();
@@ -18,16 +20,18 @@ do
 done
 
 # Write the cpu logs to file
-./tests/cpu.sh $pid &
+#./tests/cpu.sh $pid &
 
 wait ${wait_pids[*]};
 
+echo "Done sending."
 # Get the cpu measure pid
-pid=$(ps | grep cpu.sh | awk '{print $1}');
-kill $pid;
+#pid=$(ps | grep cpu.sh | awk '{print $1}');
+#kill $pid;
 
 # Write the received messages to files
 ./tests/get_resutls.sh $IP $PORT
+echo "Got results"
 
 # Validate the send/receive messages
 python ./tests/validate_results.py
@@ -36,5 +40,5 @@ python ./tests/validate_results.py
 #./tests/add.sh waiting_counter.log
 
 # Print the mean cpu load
-./tests/add.sh cpu.log
+#./tests/add.sh cpu.log
 

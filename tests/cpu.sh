@@ -9,9 +9,9 @@ rm -f cpu.log;
 while [ 1 ]
 do
 	CPU=$(top -b -n1 -p $pid | grep server | awk '{print $9}');
-	#prefix=$(echo "${CPU%%,*}");
-	#suffix=$(echo "${CPU#$prefix,}");
-	#CPU=$(echo $prefix.$suffix);
+	prefix=$(echo "${CPU%%,*}");
+	suffix=$(echo "${CPU#$prefix,}");
+	CPU=$(echo $prefix.$suffix);
 	#echo $prefix
 	echo $CPU >> cpu.log
 
