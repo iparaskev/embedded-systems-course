@@ -8,6 +8,11 @@ received_messages = [{}, {}]      # List with the received messages per user
 
 maxim = 0
 
+total_sended = 0
+total_received = 0
+rec_0 = 0
+rec_1 = 0
+
 for log in log_files:
     # Get log id
     log_id = log.split(".")[0]
@@ -43,8 +48,14 @@ for log in log_files:
             # Check if there is the iteration 
             if iteration in received_messages[int_id][sender]:
                 received_messages[int_id][sender][iteration].append(message)
+                total_received += 1
             else:
                 received_messages[int_id][sender][iteration] = [message]
+                total_received += 1
+            if int_id:
+                rec_1 += 1
+            else:
+                rec_0 += 1
     else:
         ''' Make a new list which will have all the send messages per
             iteration in dictionaries with keys the iterations ids.
@@ -59,29 +70,38 @@ for log in log_files:
             messages_1 = line[2]
             total_messages[log_id][0][iteration] = int(messages_0)
             total_messages[log_id][1][iteration] = int(messages_1)
+            total_sended += int(messages_0) + int(messages_1)
 
 
 identity = 0
-total_sended = 0
-total_received = 0
 total_lost = 0
+print (rec_0, rec_1)
+# Validate that got the right messages
 for receiver in received_messages:
     for sender in receiver:
         for iteration in receiver[sender]:
             # Find the possible messages
             sended = total_messages[sender][identity][iteration]
-            total_sended += sended
             if not identity:
                 must_be = range(2, 2*(sended + 1), 2)
             else:
                 must_be = range(3, 2*(sended + 1), 2)
             
             # Count how many messages received
-            for message in receiver[sender][iteration]:
-                if message in must_be:
-                    total_received += 1
-                else:
+            for message in must_be:
+                if not (message in receiver[sender][iteration]):
+                    print ("Missing from %s from sender %s iteration %s mes %d"%(identity,
+                                                                                sender,
+                                                                                iteration,
+                                                                                message))
                     total_lost += 1
+            for message in receiver[sender][iteration]:
+                if not (message in must_be):
+                    print ("-Missing from %s from sender %s iteration %s mes %d"%(identity,
+                                                                                sender,
+                                                                                iteration,
+                                                                                message))
+
     identity += 1
 
 print ("Sended: %d\nReceived: %d\nLost: %d\nCheck: %d\n"%(total_sended,
