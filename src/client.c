@@ -5,9 +5,11 @@
 #include <netinet/in.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
 #include <arpa/inet.h>
 #include "constants.h"
 
+// TODO connection timeout change the time 
 
 /*
 	socket
@@ -44,10 +46,13 @@ main(int argc, char **argv)
 	memset(server_addr.sin_zero, '\0', sizeof server_addr.sin_zero);
 
 	// connect to 
-	if (connect(socket_fd, (struct sockaddr *) &server_addr, sizeof server_addr) == -1)
+	while (connect(socket_fd, (struct sockaddr *) &server_addr, sizeof server_addr) == -1)
 	{
-		perror("connect");
-		exit(-1);
+		if (errno != ETIMEDOUT)
+		{
+			perror("connect");
+			exit(-1);
+		}
 	}
 
 	int numbytes;
