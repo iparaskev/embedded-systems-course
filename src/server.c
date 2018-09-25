@@ -56,7 +56,7 @@ handle_accept(void *fd)
 	/* Sleep interval between after sending a batch.*/
 	struct timespec mini_break;
 	mini_break.tv_sec = 0;
-	mini_break.tv_nsec = 500000;
+	mini_break.tv_nsec = 5000000;
 
 	/* Send the unread messages to that address.*/
 	users *target = find_user(users_list, from);
