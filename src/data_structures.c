@@ -5,6 +5,12 @@
 #include "data_structures.h"
 #include "constants.h"
 
+/* Add a new message to the messages list for a user.
+ *
+ * Arguments:
+ * list -- Pointer to a user struct.
+ * message -- The message to be added.
+*/
 void 
 add_message(users *list, char *message)
 {
@@ -38,9 +44,17 @@ add_message(users *list, char *message)
 	}
 }
 
+/* Add a user to the users list and add the first message.
+ *
+ * Arguments:
+ * list -- Pointer to the head of the users list.
+ * username -- The id of the user.
+ * message -- The first unread message. 
+*/
 void
 add_user(users *list, char *username, char *message)
 {
+	/* Go to the last user.*/
 	for (; list->next != NULL; list = list->next);
 
 	/* Initialization of the new user.*/
@@ -58,6 +72,8 @@ add_user(users *list, char *username, char *message)
 		exit(1);
 	}
 	strcpy(next->name, username);
+
+	/* Initialize the mutex of the user*/
 	pthread_mutex_init(&(next->user_mutex), NULL);
 
 	/* Initialize the first message.*/
@@ -70,21 +86,33 @@ add_user(users *list, char *username, char *message)
 	list = list->next;	
 }
 
+/* Find a user with a specific username and return the pointer that points at 
+ * him.
+ *
+ * Arguments:
+ * list -- The users list.
+ * username -- The username of the user we want
+ *
+ * Output:
+ * A pointer to the specific user.
+*/
 users*
 find_user(users *list, char *username)
 {
-	users *current = list;
-	for (; current != NULL; current = current->next)
-		if (!strcmp(current->name, username))
+	//users *current = list;
+	for (; list != NULL; list = list->next)
+		if (!strcmp(list->name, username))
 			break;
 
-	return current;
+	return list;
 }
 
 
+/* Delete the first message from a user's message list.*/
 void
 delete_message(users *user)
 {
+	/* If the list has only one message.*/
 	if (user->head == user->tail)
 	{
 		free(user->head->msg);
@@ -101,23 +129,28 @@ delete_message(users *user)
 	}
 }
 
+/* Add a new open socket descriptor to the waiting quee.*/
 void 
 add_descriptor(fifo *l, struct accept_d *sd)
 {
-	fifo *cur = l;
-	for (; cur->next != NULL; cur = cur->next);
+	/* Go to the end of the quee.*/
+	for (; l->next != NULL; l = l->next);
 
+	/* Copy the new descriptor*/
 	fifo *new = malloc(sizeof *new);
 	if (new == NULL)
 	{
 		perror("Malloc");
 		exit(1);
 	}
+
+	/* Update the quee.*/
 	new->sd = sd;
 	new->next = NULL;
-	cur->next = new;
+	l->next = new;
 }
 
+/* Delete an element from the waiting quee*/
 void
 delete_descriptor(fifo *l)
 {
