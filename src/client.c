@@ -9,7 +9,6 @@
 #include <arpa/inet.h>
 #include "constants.h"
 
-// TODO connection timeout change the time 
 
 /*
 	socket
@@ -25,6 +24,18 @@ main(int argc, char **argv)
 		fprintf(stderr, "ERROR: no port or ip provided\n");
 		exit(1);
 	}
+
+	/* Parse arguments*/
+	int opt;
+	int testing = 0;
+	char *optstring = "t";
+	while ((opt = getopt(argc, argv, optstring)) != -1)
+		switch (opt)
+		{
+			case 't':
+				testing = 1;
+				break;
+		}
 
 	struct sockaddr_in server_addr;
 
@@ -58,15 +69,18 @@ main(int argc, char **argv)
 	int numbytes;
 	/* Send address to server.*/ 
 	char from[ADDRESS_SIZE];
+	if (!testing)
+		printf("Type your address: ");
 	fgets(from, ADDRESS_SIZE, stdin);
 	if((numbytes = send(socket_fd, from, strlen(from), 0)) == -1)
 		perror("send");
 
 	/* Get incoming messages.*/
+	if (!testing)
+		printf("Unread messages\n");
 	char unread[BATCH_SIZE];
 	char message[MAXDATA_SIZE];
 	memset(message, 0, MAXDATA_SIZE);
-	char *termio = {"end_messages_0@#1"};
 	int flag = 0;
 	while (1)
 	{
@@ -74,7 +88,6 @@ main(int argc, char **argv)
 		if (numbytes == -1)
 			perror("receive");
 		unread[numbytes] = '\0';
-		//printf("%s\n", unread);
 
 		/* Split the messages. */
 		int index = 0;
@@ -102,33 +115,62 @@ main(int argc, char **argv)
 	}
 
 	
+	/* Buffers for sending the messages*/
+	char batch[BATCH_SIZE];      // Buffer for sending batches of messages
+	memset(batch, 0, BATCH_SIZE);
+
+	char to[ADDRESS_SIZE];       // Buffer for geting the receiver address
+
+	int batch_length = 0;
+	char *terminal_string = {"\n"};
 	while (1)
 	{
 		/* Send address of receiver and message.*/
-		char to[ADDRESS_SIZE + MAXDATA_SIZE];
-		memset(to, 0, ADDRESS_SIZE + MAXDATA_SIZE);
+		memset(to, 0, ADDRESS_SIZE);
+		if (!testing)
+			printf("Type receiver's address: ");
 		fgets(to, ADDRESS_SIZE, stdin);
 
 		/* Send message*/
 		if (strcmp(to, "\n") != 0)
 		{
+			/* Get message from stdin*/
+			memset(message, 0, MAXDATA_SIZE);
+			if (!testing)
+				printf("Type message: ");
 			fgets(message, MAXDATA_SIZE, stdin);
 
-			/* Concatenate to and message*/
-			strcat(to, message);
-			numbytes = send(socket_fd, to, strlen(to), 0);
-			if(numbytes == -1)
-				perror("send");
-			memset(to, 0, ADDRESS_SIZE + MAXDATA_SIZE);
+			if ((strlen(message) + strlen(to) + batch_length) > BATCH_SIZE - 1)
+			{
+				//printf("Length %d\n", batch_length);
+				numbytes = send(socket_fd, batch, batch_length, 0);
+				if (numbytes == -1)
+					perror("Send: ");
+
+				/* Clear the buffer and the length*/
+				memset(batch, 0, BATCH_SIZE);
+				batch_length = 0;
+			}
+
+			/* Concatenate message and to to batch.*/
+			strcat(batch, to);
+			strcat(batch, message);
+			batch_length += strlen(to) + strlen(message);
 		}
 		else
 		{
-			numbytes = send(socket_fd, to, strlen(to), 0);
-			if(numbytes == -1)
-				perror("send");
+			/* Send the last messages*/
+			numbytes = send(socket_fd, batch, batch_length, 0);
+			if (numbytes == -1)
+				perror("Send: ");
+
+			/* Send the termination characters.*/
+			numbytes = send(socket_fd, terminal_string,
+					strlen(terminal_string), 0);
+			if (numbytes == -1)
+				perror("Send: ");
 			break;
 		}
-		break;
 	}
 
 	close(socket_fd);
