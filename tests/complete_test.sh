@@ -4,7 +4,8 @@ IP=$1;
 if [ $IP = '-h' ]
 then
         echo "Arguments"
-        echo "IP PORT clients iterations msgs_per_it sleep_per_msg sleep_per_it"
+        echo "IP PORT clients iterations msgs_per_it sleep_per_msg sleep_per_it"\
+              " messages"
         exit 0
 fi
 
@@ -15,20 +16,28 @@ its=$4;
 msgs_per_it=$5;
 time_per_msg=$6;
 time_interval=$7;
+messages=$8;
 
 # Clear the logs
 rm -f logs/*;
 
 # Write the cpu logs to file
 ssh root@$IP 'top' > logs/top_results.log &
-fg %ssh
 sleep 5;
 
 # Start the concurrent client processes
 wait_pids=();
 for i in `seq 2 $clients`;
 do
-        ./tests/limits.sh $IP $PORT $i $its $msgs_per_it $time_per_msg $time_interval &
+        ./tests/limits.sh $IP\
+                          $PORT\
+                          $i\
+                          $its\
+                          $msgs_per_it\
+                          $time_per_msg\
+                          $time_interval\
+                          $messages\
+                          &
 	    wait_pids+=($!);
 done
 
