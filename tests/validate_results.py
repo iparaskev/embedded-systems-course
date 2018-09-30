@@ -85,9 +85,9 @@ for receiver in received_messages:
             # Find the possible messages
             sended = total_messages[sender][identity][iteration]
             if not identity:
-                must_be = range(2, 2*(sended + 1), 2)
+                must_be = range(0, sended)
             else:
-                must_be = range(3, 2*(sended + 1), 2)
+                must_be = range(0, sended)
             
             # Count how many messages received
             for message in must_be:
