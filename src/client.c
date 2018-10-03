@@ -25,17 +25,6 @@ main(int argc, char **argv)
 		exit(1);
 	}
 
-	/* Parse arguments*/
-	int opt;
-	int testing = 0;
-	char *optstring = "t";
-	while ((opt = getopt(argc, argv, optstring)) != -1)
-		switch (opt)
-		{
-			case 't':
-				testing = 1;
-				break;
-		}
 
 	struct sockaddr_in server_addr;
 
@@ -56,6 +45,18 @@ main(int argc, char **argv)
 	}
 	memset(server_addr.sin_zero, '\0', sizeof server_addr.sin_zero);
 
+	/* Parse arguments*/
+	int opt;
+	int testing = 0;
+	char *optstring = "t";
+	while ((opt = getopt(argc, argv, optstring)) != -1)
+		switch (opt)
+		{
+			case 't':
+				testing = 1;
+				break;
+		}
+
 	// connect to 
 	while (connect(socket_fd, (struct sockaddr *) &server_addr, sizeof server_addr) == -1)
 	{
@@ -67,13 +68,20 @@ main(int argc, char **argv)
 	}
 
 	int numbytes;
-	/* Send address to server.*/ 
-	char from[ADDRESS_SIZE];
+	int bytes;
+
 	if (!testing)
 		printf("Type your address: ");
+
+	/* Send address to server.*/ 
+	char from[ADDRESS_SIZE];
 	fgets(from, ADDRESS_SIZE, stdin);
 	if((numbytes = send(socket_fd, from, strlen(from), 0)) == -1)
 		perror("send");
+
+	/* Confirmation buffer*/
+	char confirm[ACK_SIZE];
+	memset(confirm, 0, ACK_SIZE);
 
 	/* Get incoming messages.*/
 	if (!testing)
@@ -88,6 +96,11 @@ main(int argc, char **argv)
 		if (numbytes == -1)
 			perror("receive");
 		unread[numbytes] = '\0';
+
+		/* Send confirmation.*/
+		bytes = send(socket_fd, confirm, ACK_SIZE - 1, 0);
+		if (numbytes == -1)
+			perror("send");
 
 		/* Split the messages. */
 		int index = 0;
@@ -122,13 +135,13 @@ main(int argc, char **argv)
 	char to[ADDRESS_SIZE];       // Buffer for geting the receiver address
 
 	int batch_length = 0;
-	char *terminal_string = {"\n"};
+	char *terminal_string = "\n";
 	while (1)
 	{
 		/* Send address of receiver and message.*/
 		memset(to, 0, ADDRESS_SIZE);
 		if (!testing)
-			printf("Type receiver's address: ");
+			printf("Type receiver's address or for termination press enter: ");
 		fgets(to, ADDRESS_SIZE, stdin);
 
 		/* Send message*/
@@ -147,6 +160,11 @@ main(int argc, char **argv)
 				if (numbytes == -1)
 					perror("Send: ");
 
+				/* Get confirmation.*/
+				numbytes = recv(socket_fd, confirm, ACK_SIZE - 1, 0);
+				if (numbytes == -1)
+					perror("receive");
+
 				/* Clear the buffer and the length*/
 				memset(batch, 0, BATCH_SIZE);
 				batch_length = 0;
@@ -160,15 +178,31 @@ main(int argc, char **argv)
 		else
 		{
 			/* Send the last messages*/
+			if (batch_length < 1)
+				batch_length = 1;
+			numbytes = send(socket_fd, batch, batch_length, 0);
+			if (numbytes == -1)
+				perror("Send: ");
+			memset(batch, 0, BATCH_SIZE);
+
+			/* Get confirmation.*/
+			numbytes = recv(socket_fd, confirm, ACK_SIZE - 1, 0);
+			if (numbytes == -1)
+				perror("receive");
+			//puts("Got 1");
+
+			/* Send the termination characters.*/
+			strcpy(batch, terminal_string);
+			batch_length = strlen(batch);
 			numbytes = send(socket_fd, batch, batch_length, 0);
 			if (numbytes == -1)
 				perror("Send: ");
 
-			/* Send the termination characters.*/
-			numbytes = send(socket_fd, terminal_string,
-					strlen(terminal_string), 0);
+			/* Get confirmation.*/
+			numbytes = recv(socket_fd, confirm, ACK_SIZE - 1, 0);
 			if (numbytes == -1)
-				perror("Send: ");
+				perror("receive");
+			//puts("Got 2");
 			break;
 		}
 	}

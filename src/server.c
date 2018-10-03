@@ -10,7 +10,7 @@
 #include "constants.h"
 #include "data_structures.h"
 
-#define LIMIT 64
+#define LIMIT 16
 
 /* Global variables*/
 users *users_list;
@@ -24,7 +24,6 @@ int testing = 0;
 pthread_mutex_t user_pass = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t active_pass = PTHREAD_MUTEX_INITIALIZER;
 
-// TODO: try long int pointer and not a struct
 
 void *
 handle_accept(void *fd)
@@ -34,9 +33,9 @@ handle_accept(void *fd)
 	accept_fd = (struct accept_d *) fd;
 	int new_fd = accept_fd->new_fd;
 
-	// TODO add malloc check 
 	/* The buffers will be needed.*/
 	int numbytes;
+	int bytes;
 	char *message = malloc(MAXDATA_SIZE);
 	if (message == NULL)
 	{
@@ -73,6 +72,13 @@ handle_accept(void *fd)
 	}
 	memset(unread, 0, BATCH_SIZE);
 
+	char *confirm = malloc(ACK_SIZE);
+	if (confirm == NULL)
+	{
+		perror("malloc at confirmation: ");
+		exit(1);
+	}
+	memset(confirm, 0, ACK_SIZE);
 
 	/* Read connected address.*/
 	if ((numbytes = recv(new_fd, from, ADDRESS_SIZE - 1, 0)) == -1)
@@ -82,14 +88,10 @@ handle_accept(void *fd)
 	}
 	from[numbytes] = '\0';
 
-	/* Sleep interval after sending a batch.*/
-	struct timespec mini_break;
-	mini_break.tv_sec = 0;
-	mini_break.tv_nsec = 25000000;
-
 	/* Send the unread messages to that address.*/
 	users *target = find_user(users_list, from);
 	int length = 0;     // The batch's running length
+	int counter = 0;
 	if (target != NULL)
 	{
 		pthread_mutex_lock(&(target->user_mutex));
@@ -107,7 +109,12 @@ handle_accept(void *fd)
 				if (numbytes == -1)
 					perror("send");
 				
-				nanosleep(&mini_break, NULL);
+				/* Get confirmation.*/
+				numbytes = recv(new_fd, confirm, ACK_SIZE - 1, 0);
+				if (numbytes == -1)
+					perror("receive");
+
+				//nanosleep(&mini_break, NULL);
 				/* Clean buffer.*/
 				memset(unread, 0, BATCH_SIZE);
 				length = 0;
@@ -117,7 +124,9 @@ handle_accept(void *fd)
 			strcat(unread, message);
 			length += strlen(message);
 			delete_message(target);
+			counter++;
 		}
+		printf("Counter %d\n", counter);
 		pthread_mutex_unlock(&(target->user_mutex));
 	}
 
@@ -128,6 +137,11 @@ handle_accept(void *fd)
 		perror("send");
 	if (numbytes < checker)
 		printf("Sended %d, message wa %d\n", numbytes, checker);
+
+	/* Get confirmation.*/
+	numbytes = recv(new_fd, confirm, ACK_SIZE - 1, 0);
+	if (numbytes == -1)
+		perror("receive");
 	memset(unread, 0, BATCH_SIZE);
 
 	/*Send termination message for the uread*/
@@ -138,6 +152,10 @@ handle_accept(void *fd)
 		perror("send");
 	if (numbytes < checker)
 		printf("2 Sended %d, message  %d\n", numbytes, checker);
+	/* Get confirmation.*/
+	numbytes = recv(new_fd, confirm, ACK_SIZE - 1, 0);
+	if (numbytes == -1)
+		perror("receive");
 
 	/* Clear the buffers for receiving messages*/
 	memset(message, 0, MAXDATA_SIZE);
@@ -150,15 +168,25 @@ handle_accept(void *fd)
 	while (1)
 	{
 		/* Receive batch*/
+		memset(buffer, 0, BATCH_SIZE);
 		numbytes = recv(new_fd, buffer, BATCH_SIZE - 1, 0);
+		//printf("Numbytes %d\n", numbytes);
+		//printf("Message %s", buffer);
 		if ( numbytes == -1)
 		{
 			perror("recv");
 			exit(1);
 		}
 		buffer[numbytes] = '\0';
+		//puts("Got");
+		/* Send confirmation.*/
+		bytes = send(new_fd, confirm, ACK_SIZE - 1, 0);
+		if (numbytes == -1)
+			perror("send");
 
 		/* Split the messages*/
+		if (buffer[0] == '\0')
+			continue;
 		int byte = 0;
 		for (byte; byte < numbytes; byte++)
 		{
@@ -176,9 +204,11 @@ handle_accept(void *fd)
 			}
 
 			/* At new lines update message's lists*/
+			//printf("to_index %d t %d b %d\n", to_index, to[0], buffer[byte]);
 			if (buffer[byte] == 10)
 			{
-				if (!(new_lines % 2))
+				//printf("Newline %d\n", new_lines);
+				if (!((new_lines) % 2))
 				{
 					if (strcmp(to, "\n") == 0)
 					{
@@ -195,10 +225,9 @@ handle_accept(void *fd)
 						mes_length = strlen(message);
 						message[mes_length - 1] = ' ';
 						strcat(message, "from ");
-						strcat(message, to);
+						strcat(message, from);
 						
 					}
-
 					pthread_mutex_lock(&user_pass);
 					target = find_user(users_list, to);
 					if (target == NULL)
@@ -217,6 +246,7 @@ handle_accept(void *fd)
 					memset(message, 0, MAXDATA_SIZE);
 					to_index = 0;
 					message_index = 0;
+
 				}
 				new_lines++;
 			}
@@ -266,6 +296,7 @@ handle_accept(void *fd)
 	free(from);
 	free(to);
 	free(buffer);
+	free(confirm);
 
 	pthread_exit(NULL);
 }
@@ -288,6 +319,17 @@ main(int argc, char **argv)
 		close
 	*/
 
+	int listen_fd, new_fd; // listening and new connection descriptor
+	struct sockaddr_in server_addr;
+	struct sockaddr_storage client_addr;
+
+	// fill server address info
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_port = htons(atoi(argv[1]));
+	server_addr.sin_addr.s_addr = INADDR_ANY; // bind my local ip
+	memset(server_addr.sin_zero, '\0', sizeof server_addr.sin_zero);
+
+	/* Read stdin*/
 	char *optstring = "t";
 	int opt;
 	while ((opt = getopt(argc, argv, optstring)) != -1)
@@ -298,15 +340,6 @@ main(int argc, char **argv)
 				break;
 		}
 
-	int listen_fd, new_fd; // listening and new connection descriptor
-	struct sockaddr_in server_addr;
-	struct sockaddr_storage client_addr;
-
-	// fill server address info
-	server_addr.sin_family = AF_INET;
-	server_addr.sin_port = htons(atoi(argv[1]));
-	server_addr.sin_addr.s_addr = INADDR_ANY; // bind my local ip
-	memset(server_addr.sin_zero, '\0', sizeof server_addr.sin_zero);
 
 	// open a socket descriptor for listening
 	if ((listen_fd = socket(PF_INET, SOCK_STREAM, 0)) == -1)
@@ -364,7 +397,6 @@ main(int argc, char **argv)
 		fd->new_fd = new_fd;
 
 		pthread_mutex_lock(&active_pass);
-		//printf("%d\n", wait_counter);
 		if (active_clients < LIMIT)
 		{
 			active_clients++;
