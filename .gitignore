@@ -6,3 +6,7 @@ logs
 statistics/
 plots/
 report/
+recall.py
+tests/get_statistics.sh
+tests/get_waiting.sh
+tests/waiting_active.sh
