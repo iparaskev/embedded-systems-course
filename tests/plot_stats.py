@@ -47,6 +47,6 @@ blue_patch = mpatches.Patch(color='blue', label='7 msgs')
 green_patch = mpatches.Patch(color='green', label='1 msgs')
 plt.legend(handles=[green_patch, red_patch, blue_patch])
 #plt.plot(ratios, cpu, 'g^')
-plt.show()
-#plt.savefig('plots/64.png', bbox_inches='tight')
+#plt.show()
+plt.savefig('plots/64.png', bbox_inches='tight')
 

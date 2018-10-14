@@ -9,8 +9,6 @@ sleep_break=$6;
 max_sleep=$7;
 messages=$8;
 
-# Total sended messages to every user
-
 # Remove the previous log file
 rm -f logs/$ID.log
 rm -f logs/time.log
@@ -38,7 +36,7 @@ do
                         do
                                 std=$(echo "${std}0\n${ID}_${i}_${j}\n")
                         done
-                        echo -e $std | ./bin/client $IP $PORT;
+                        echo -e $std | ./bin/client $IP $PORT -t;
                         counter_0=$(echo $((end_msg + 1)))
                 else
                         # Make the string for stdin
@@ -48,7 +46,7 @@ do
                         do
                                 stdin=$(echo "${stdin}1\n${ID}_${i}_${j}\n");
                         done
-                        echo -e $stdin | ./bin/client $IP $PORT;
+                        echo -e $stdin | ./bin/client $IP $PORT -t;
                         counter_1=$(echo $((end_msg + 1)));
                 fi
 

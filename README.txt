@@ -1,22 +1,40 @@
-Server
-----------------------------------------------
+Complile
 
-1. Bind a port with a socket and open a new socket for listening.
-2. Wait for new connections and for every new connection begin a new process/
-   thread.
-3. Receives address of the connected client.
-4. Sends to to the connected client the unread messages that it has, if no 
-   remaining messages sends a blank line.
-5. Waits the response of the client. 
-6. If the response is blank terminates connection
-7. Else the first line is the address which the client want to send a message.
-   Then it adds the message to the receiver's heap and terminates the connection.
-##############################################
- 
-Client
-----------------------------------------------
+Με την εντολή make γίνεται complile ο κώδικας και στον φάκελο bin δημιουργούνται 
+τα εκτελέσιμα. 
+Για να γίνει compile για την αρχιτεκτονική του zsun πρέπει να συμπληρωθεί 
+το path του compiler στην μεταβλητή cross_gcc στο makefile. 
 
-1. Connects to the server.
-2. Sends his address to the server and waits for incoming messages. 
-3. If the incoming messages is a blank line stops waiting for new.
-4. If it has any message to send it sends it and terminates the connection. 
+---------------------------------------------------
+
+Εκτέλεση
+
+Server: ./bin/server PORT
+Client: ./bin/client SERVER_IP PORT
+Server local: ./bin/server_loc PORT
+
+---------------------------------------------------
+
+Έλεγχος(φάκελος tests)
+
+* Για την εκτέλεση των παρακάτω scripts ο server πρέπει να τρέξει με το flag -t *
+
+Τα scripts ελέγχου είναι τα εξής:
+
+- limits.sh: ./limits.sh SERVER_IP PORT ID ITERATIONS MSG SL1 SL2 MSGS
+Το οποίο καλεί ITERATIONS*MSG φορές τον client και στέλνει MSGS μηνύματα στον 
+server. Τα sl1 sl2 είναι ο χρόνος που κάνει sleep μεταξύ κάθε MSG και ITERATION
+αντίστοιχα. 
+- complete_tests.sh/complete_tests_loc.sh: Τα ορίσματα τους είναι ίδια με το 
+limits.sh με την διαφορά ότι αντί για ID δέχεται τον αριθμό των ταυτόχρονων clients
+. Η λειτουργία του είναι να καλεί το limits και στην συνέχεια να ελέγχει
+αν όλα τα μηνύματα που στάλθηκαν ληφθήθηκαν κιόλας. Επίσης κρατάει στατιστικά 
+της χρήσης της cpu. Το _loc είναι για server που τρέχει local ενώ το άλλο 
+είναι για server που εκτελείται στο zsun. 
+- validate_results.py: Ελέγχει την σωστή αποστολή και παραλαβή των μηνυμάτων.
+
+Οπότε είναι:
+
+limits: ./tests/limits.sh IP PORT ID ITERATIONS MSG SL1 SL2 MSGS
+complete: ./tests/complete_tests.sh IP PORT CLIENT ITERATIONS MSG SL1 SL2 MSGS
+

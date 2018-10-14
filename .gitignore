@@ -4,3 +4,5 @@ logs
 *.log
 *.swp
 statistics/
+plots/
+report/

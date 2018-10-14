@@ -35,7 +35,7 @@ main(int argc, char **argv)
 		exit(1);
 	} 
 	
-	// fill server address info
+	/* Fill server address info.*/
 	server_addr.sin_family = AF_INET;
 	server_addr.sin_port = htons(atoi(argv[2]));
 	if (inet_pton(AF_INET, argv[1], &(server_addr.sin_addr)) == -1)
@@ -67,35 +67,43 @@ main(int argc, char **argv)
 		}
 	}
 
+	/* Variables for sended bytes*/
 	int numbytes;
 	int bytes;
 
-	if (!testing)
-		printf("Type your address: ");
-
-	/* Send address to server.*/ 
+	/*Buffers for messaging*/
 	char from[ADDRESS_SIZE];
-	fgets(from, ADDRESS_SIZE, stdin);
-	if((numbytes = send(socket_fd, from, strlen(from), 0)) == -1)
-		perror("send");
+	memset(from, 0, ADDRESS_SIZE);
+	char to[ADDRESS_SIZE];       
+	memset(to, 0, ADDRESS_SIZE);
+	char batch[BATCH_SIZE];
+	memset(batch, 0, BATCH_SIZE);
+	char message[MAXDATA_SIZE];
+	memset(message, 0, MAXDATA_SIZE);
 
 	/* Confirmation buffer*/
 	char confirm[ACK_SIZE];
 	memset(confirm, 0, ACK_SIZE);
 
+	if (!testing)
+		printf("Type your address: ");
+
+	/* Send address to server.*/ 
+	fgets(from, ADDRESS_SIZE, stdin);
+	if((numbytes = send(socket_fd, from, strlen(from), 0)) == -1)
+		perror("send");
+
+
 	/* Get incoming messages.*/
 	if (!testing)
 		printf("Unread messages\n");
-	char unread[BATCH_SIZE];
-	char message[MAXDATA_SIZE];
-	memset(message, 0, MAXDATA_SIZE);
 	int flag = 0;
 	while (1)
 	{
-		numbytes = recv(socket_fd, unread, BATCH_SIZE - 1, 0);
+		numbytes = recv(socket_fd, batch, BATCH_SIZE - 1, 0);
 		if (numbytes == -1)
 			perror("receive");
-		unread[numbytes] = '\0';
+		batch[numbytes] = '\0';
 
 		/* Send confirmation.*/
 		bytes = send(socket_fd, confirm, ACK_SIZE - 1, 0);
@@ -106,9 +114,9 @@ main(int argc, char **argv)
 		int index = 0;
 		for (int byte = 0; byte < numbytes; byte++)
 		{
-			if (unread[byte] != 10)
+			if (batch[byte] != 10)
 			{
-				message[index] = unread[byte];
+				message[index] = batch[byte];
 				index++;
 			}
 			else
@@ -123,16 +131,13 @@ main(int argc, char **argv)
 				index = 0;
 			}
 		}
+
+		/* Clear the buffer*/
+		memset(batch, 0, BATCH_SIZE);
+
 		if (flag)
 			break;
 	}
-
-	
-	/* Buffers for sending the messages*/
-	char batch[BATCH_SIZE];      // Buffer for sending batches of messages
-	memset(batch, 0, BATCH_SIZE);
-
-	char to[ADDRESS_SIZE];       // Buffer for geting the receiver address
 
 	int batch_length = 0;
 	char *terminal_string = "\n";
@@ -155,7 +160,6 @@ main(int argc, char **argv)
 
 			if ((strlen(message) + strlen(to) + batch_length) > BATCH_SIZE - 1)
 			{
-				//printf("Length %d\n", batch_length);
 				numbytes = send(socket_fd, batch, batch_length, 0);
 				if (numbytes == -1)
 					perror("Send: ");
@@ -189,7 +193,6 @@ main(int argc, char **argv)
 			numbytes = recv(socket_fd, confirm, ACK_SIZE - 1, 0);
 			if (numbytes == -1)
 				perror("receive");
-			//puts("Got 1");
 
 			/* Send the termination characters.*/
 			strcpy(batch, terminal_string);
@@ -202,7 +205,6 @@ main(int argc, char **argv)
 			numbytes = recv(socket_fd, confirm, ACK_SIZE - 1, 0);
 			if (numbytes == -1)
 				perror("receive");
-			//puts("Got 2");
 			break;
 		}
 	}
